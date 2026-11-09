@@ -10,7 +10,7 @@ export interface OffFoodResult {
 }
 
 const OFF_USER_AGENT =
-  "CalorieTracker/0.1 (https://github.com/emirbelkahia/calorie-tracker)";
+  "CalorieTracker/0.1 (https://github.com/emirbelkahia/calories)";
 
 const OFF_PRODUCT_FIELDS =
   "code,product_name,product_name_fr,brands,image_front_small_url,nutriments";
