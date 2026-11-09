@@ -48,6 +48,5 @@ public/workbox-*.js.map
 public/swe-worker-*.js
 public/swe-worker-*.js.map
 
-# Next.js auto agent docs
-AGENTS.md
+# Next.js auto agent docs. CLAUDE.md only. The project AGENTS.md is kept.
 CLAUDE.md

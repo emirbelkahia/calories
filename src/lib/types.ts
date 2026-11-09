@@ -79,6 +79,16 @@ export interface SavedMeal {
   items: SavedMealItem[];
 }
 
+/** A phrase said out loud, pointing at one saved food or one kitchen staple. */
+export interface SpokenAlias {
+  id?: number;
+  phrase: string;
+  customFoodId?: number;
+  stapleId?: string;
+  /** Grams per millilitre. 1 means 150 ml is stored as 150 g. */
+  density: number;
+}
+
 export interface DayTotals {
   calories: number;
   proteinG: number;
@@ -96,4 +106,6 @@ export interface BackupPayload {
   customFoods: CustomFood[];
   /** Absent on backups made before saved-meal templates. */
   savedMeals?: SavedMeal[];
+  /** Absent on backups made before spoken aliases. */
+  spokenAliases?: SpokenAlias[];
 }
