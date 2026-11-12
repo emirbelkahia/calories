@@ -17,6 +17,7 @@ import { ensureProfile, getMonthTotals } from "@/lib/db";
 import type { DayColor, DayTotals, Profile } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AppMark } from "./AppNav";
 import { SettingsGear } from "./SettingsGear";
 import { MacroRow } from "./MacroRow";
 import { useLocale } from "./LocaleProvider";
@@ -78,9 +79,7 @@ export function CalendarMonth() {
     <div className="flex flex-col gap-5">
       <header className="flex items-center justify-between gap-3 pt-2">
         <div>
-          <p className="text-sm uppercase tracking-[0.14em] text-[var(--ink-muted)]">
-            {t("brand")}
-          </p>
+          <AppMark size="sm" />
           <h1 className="display mt-1 text-3xl capitalize text-[var(--brand)]">
             {monthLabel}
           </h1>

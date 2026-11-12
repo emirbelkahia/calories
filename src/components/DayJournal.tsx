@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatDisplayDate } from "@/lib/dates";
 import { dayColor, dayStatusKind, DAY_COLOR_HEX } from "@/lib/day-status";
@@ -17,6 +18,7 @@ import {
 import type { DayTotals, FoodEntry, Meal, MealType, Profile } from "@/lib/types";
 import { AddFoodModal, type FoodDraft } from "./AddFoodModal";
 import { SavedMealsModal } from "./SavedMealsModal";
+import { VoiceLog } from "./VoiceLog";
 import { MacroRow } from "./MacroRow";
 import { SettingsGear } from "./SettingsGear";
 import { useLocale } from "./LocaleProvider";
@@ -80,6 +82,9 @@ export function DayJournal({ date }: Props) {
     Record<number, boolean>
   >({});
   const now = useAppClock();
+  const mealParam = useSearchParams().get("meal");
+  const highlightedMealId =
+    mealParam && /^\d+$/.test(mealParam) ? Number(mealParam) : null;
 
   const reload = useCallback(async () => {
     const p = await ensureProfile();
@@ -126,6 +131,11 @@ export function DayJournal({ date }: Props) {
       offId: draft.offId,
     });
     await reload();
+  }
+
+  async function handleVoiceLogged(mealId: number) {
+    await reload();
+    setExpandedOverride((prev) => ({ ...prev, [mealId]: true }));
   }
 
   async function handleAddSnack() {
@@ -187,6 +197,8 @@ export function DayJournal({ date }: Props) {
         }}
       />
 
+      <VoiceLog pageDate={date} onLogged={handleVoiceLogged} />
+
       {meals.map((meal) => {
         const mealEntries = entriesByMeal.get(meal.id!) ?? [];
         const mealKcal = mealEntries.reduce((s, e) => s + e.calories, 0);
@@ -194,7 +206,7 @@ export function DayJournal({ date }: Props) {
         const expanded =
           meal.id != null && meal.id in expandedOverride
             ? expandedOverride[meal.id]
-            : !autoCollapsed;
+            : meal.id === highlightedMealId || !autoCollapsed;
 
         function setExpanded(open: boolean) {
           if (meal.id == null) return;

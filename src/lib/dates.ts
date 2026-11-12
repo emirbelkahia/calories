@@ -14,6 +14,17 @@ export function todayKey(): string {
   return toDateKey(new Date());
 }
 
+export function isDateKey(key: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  return toDateKey(parseDateKey(key)) === key;
+}
+
+export function addDays(key: string, delta: number): string {
+  const date = parseDateKey(key);
+  date.setDate(date.getDate() + delta);
+  return toDateKey(date);
+}
+
 export function formatDisplayDate(key: string, locale = "fr-FR"): string {
   const date = parseDateKey(key);
   return date.toLocaleDateString(locale, {

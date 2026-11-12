@@ -9,6 +9,7 @@ import type {
   Profile,
   SavedMeal,
   SavedMealItem,
+  SpokenAlias,
 } from "./types";
 
 const DEFAULT_MEALS: Omit<Meal, "id" | "date">[] = [
@@ -23,6 +24,7 @@ class CalorieDB extends Dexie {
   foodEntries!: EntityTable<FoodEntry, "id">;
   customFoods!: EntityTable<CustomFood, "id">;
   savedMeals!: EntityTable<SavedMeal, "id">;
+  spokenAliases!: EntityTable<SpokenAlias, "id">;
 
   constructor() {
     super("calorie-tracker");
@@ -34,6 +36,9 @@ class CalorieDB extends Dexie {
     });
     this.version(2).stores({
       savedMeals: "++id, name",
+    });
+    this.version(3).stores({
+      spokenAliases: "++id, customFoodId",
     });
   }
 }
@@ -248,12 +253,72 @@ export async function upsertCustomFood(
   return id as number;
 }
 
+export async function dedupeIdenticalCustomFoods(): Promise<void> {
+  const foods = await db.customFoods.toArray();
+  const sorted = [...foods].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  const seen = new Map<string, number>();
+  for (const food of sorted) {
+    if (!food.id) continue;
+    const key = [
+      normalizeFoodName(food.name),
+      food.caloriesPer100g,
+      food.proteinPer100g,
+      food.carbsPer100g,
+      food.fatPer100g,
+    ].join("|");
+    const keep = seen.get(key);
+    if (keep == null) {
+      seen.set(key, food.id);
+      continue;
+    }
+    await db.spokenAliases
+      .where("customFoodId")
+      .equals(food.id)
+      .modify({ customFoodId: keep });
+    await db.customFoods.delete(food.id);
+  }
+}
+
 export async function listCustomFoods(): Promise<CustomFood[]> {
   return db.customFoods.orderBy("name").toArray();
 }
 
 export async function deleteCustomFood(id: number): Promise<void> {
-  await db.customFoods.delete(id);
+  await db.transaction("rw", db.customFoods, db.spokenAliases, async () => {
+    await db.spokenAliases.where("customFoodId").equals(id).delete();
+    await db.customFoods.delete(id);
+  });
+}
+
+export async function listSpokenAliases(): Promise<SpokenAlias[]> {
+  return db.spokenAliases.toArray();
+}
+
+export async function addSpokenAlias(
+  target: { customFoodId: number } | { stapleId: string },
+): Promise<number> {
+  const id = await db.spokenAliases.add({
+    phrase: "",
+    density: 1,
+    ...target,
+  });
+  return id as number;
+}
+
+export async function updateSpokenAlias(alias: SpokenAlias): Promise<void> {
+  if (!alias.id) return;
+  const record: SpokenAlias = {
+    id: alias.id,
+    phrase: alias.phrase.trim(),
+    density: alias.density > 0 ? alias.density : 1,
+  };
+  if (alias.stapleId) record.stapleId = alias.stapleId;
+  else if (alias.customFoodId) record.customFoodId = alias.customFoodId;
+  await db.spokenAliases.put(record);
+}
+
+export async function deleteSpokenAlias(id: number): Promise<void> {
+  await db.spokenAliases.delete(id);
 }
 
 function toSavedMealItem(entry: FoodEntry): SavedMealItem {
@@ -313,13 +378,14 @@ export async function deleteSavedMeal(id: number): Promise<void> {
 }
 
 export async function exportBackup(): Promise<BackupPayload> {
-  const [profile, meals, foodEntries, customFoods, savedMeals] =
+  const [profile, meals, foodEntries, customFoods, savedMeals, spokenAliases] =
     await Promise.all([
       db.profile.get(1),
       db.meals.toArray(),
       db.foodEntries.toArray(),
       db.customFoods.toArray(),
       db.savedMeals.toArray(),
+      db.spokenAliases.toArray(),
     ]);
   return {
     version: 1,
@@ -329,6 +395,7 @@ export async function exportBackup(): Promise<BackupPayload> {
     foodEntries,
     customFoods,
     savedMeals,
+    spokenAliases,
   };
 }
 
@@ -338,17 +405,21 @@ export async function importBackup(payload: BackupPayload): Promise<void> {
   }
   await db.transaction(
     "rw",
-    db.profile,
-    db.meals,
-    db.foodEntries,
-    db.customFoods,
-    db.savedMeals,
+    [
+      db.profile,
+      db.meals,
+      db.foodEntries,
+      db.customFoods,
+      db.savedMeals,
+      db.spokenAliases,
+    ],
     async () => {
       await Promise.all([
         db.foodEntries.clear(),
         db.meals.clear(),
         db.customFoods.clear(),
         db.savedMeals.clear(),
+        db.spokenAliases.clear(),
         db.profile.clear(),
       ]);
       if (payload.profile) await db.profile.put(payload.profile);
@@ -361,6 +432,9 @@ export async function importBackup(payload: BackupPayload): Promise<void> {
       }
       if (payload.savedMeals?.length) {
         await db.savedMeals.bulkPut(payload.savedMeals);
+      }
+      if (payload.spokenAliases?.length) {
+        await db.spokenAliases.bulkPut(payload.spokenAliases);
       }
     },
   );
