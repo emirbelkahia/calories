@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { STAPLES, type StapleFood } from "@/data/staples";
 import { addDays, formatDisplayDate, isDateKey, todayKey } from "@/lib/dates";
 import {
@@ -216,6 +216,12 @@ export function VoiceLog({ pageDate, onLogged }: Props) {
     }
   }
 
+  const alertRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!error) return;
+    alertRef.current?.scrollIntoView({ block: "nearest" });
+  }, [error]);
+
   const draft = session?.draft ?? null;
   const today = todayKey();
   const yesterday = isDateKey(today) ? addDays(today, -1) : null;
@@ -240,40 +246,6 @@ export function VoiceLog({ pageDate, onLogged }: Props) {
       <p id="voice-hint" className="text-sm text-[var(--ink-muted)]">
         {t("voiceHint")}
       </p>
-      {notice && (
-        <p role="status" className="text-sm">
-          {notice}
-        </p>
-      )}
-      {error === "key" && (
-        <p role="alert" className="text-sm">
-          {t("voiceNeedKeyLead")}{" "}
-          <Link href="/settings" className="text-[var(--brand)]">
-            {t("settings")}
-          </Link>{" "}
-          {t("voiceNeedKeyTail")}
-        </p>
-      )}
-      {error === "bad" && (
-        <p role="alert" className="text-sm">
-          {t("voiceBadKeyLead")}{" "}
-          <Link href="/settings" className="text-[var(--brand)]">
-            {t("settings")}
-          </Link>
-          .
-        </p>
-      )}
-      {error === "read" && (
-        <p role="alert" className="text-sm">
-          {t("voiceFailed")}
-        </p>
-      )}
-      {error === "save" && (
-        <p role="alert" className="text-sm">
-          {t("voiceSaveFailed")}
-        </p>
-      )}
-
       <form className="flex flex-col gap-3" onSubmit={readPhrase}>
         <div className="field">
           <textarea
@@ -298,6 +270,34 @@ export function VoiceLog({ pageDate, onLogged }: Props) {
         >
           {busy === "read" ? t("voiceReading") : t("voiceRead")}
         </button>
+        {notice && (
+          <p role="status" className="text-sm">
+            {notice}
+          </p>
+        )}
+        {error === "key" && (
+          <p ref={alertRef} role="alert" className="voice-alert">
+            {t("voiceNeedKeyLead")}{" "}
+            <Link href="/settings">{t("settings")}</Link>{" "}
+            {t("voiceNeedKeyTail")}
+          </p>
+        )}
+        {error === "bad" && (
+          <p ref={alertRef} role="alert" className="voice-alert">
+            {t("voiceBadKeyLead")} <Link href="/settings">{t("settings")}</Link>
+            .
+          </p>
+        )}
+        {error === "read" && (
+          <p ref={alertRef} role="alert" className="voice-alert">
+            {t("voiceFailed")}
+          </p>
+        )}
+        {error === "save" && (
+          <p ref={alertRef} role="alert" className="voice-alert">
+            {t("voiceSaveFailed")}
+          </p>
+        )}
       </form>
 
       {draft && (

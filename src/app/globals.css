@@ -863,6 +863,21 @@ textarea {
   font-weight: 400;
 }
 
+.voice-alert {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--danger) 12%, white);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.voice-alert a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .voice-ready-row {
   display: flex;
   align-items: flex-start;
